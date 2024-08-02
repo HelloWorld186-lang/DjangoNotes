@@ -877,24 +877,73 @@ def student_marks(request, student_id):
 ```
 - - Seocond code methode is to make a rank and store in the database . The code for the whole process is :- 
 
-- ## We know that the django provide the default user  and if we want to customize it (using model manager) then
-- - There are two methode of it :- 
-- - 1. Abstract methods (all default + new custom)
+- ## We know that the django provide the default user  and if we want to customize it (using model manager) and if we want to admin panel login through the phone number in place of the username and  want to add more thing in that ,  then do this 
+- - There are two methode for the ccustome user model :- 
+- - 1. Abstract methods (all default things + new custom)
 - - 2. Abstract base methods (username + password + only new custom)
+- - Write the custome model manager useing abstract methods 
+- - - Models.py 
+```
+from django.contrib.auth.models import AbstractUser
+from .manager import UserManager
 
+# This is code for the custome user model 
+class CustomUser(models.Model):
+    #provide by the django default user model
+    username = None # this is for not to take a username 
+    email = models.EmailField(unique=True)
+    #add new things to it like phone_no (because use the abstract model)
+    phone_no = models.CharField(max_length=15)
+    profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
+    bio = models.TextField(max_length=500, blank=True)
+    followers = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='following', blank=True)
 
+    objects = UserManager()
+
+    # This is for those to take email at the place of the login in the admin panel in place of the username 
+    USERNAME_FIELD = 'email' 
+    REQUIRED_FIELD = []
+
+    #we not get the defaultmodel manage in the abstract model so we make a model manager name manager.py
+```
+- - - Model Manager code 
+```
+# this helps in the query of the database
+# objects is is the model manager (which help in the query of the database)
+
+from django.contrib.auth.base_user import BaseUserManager
+
+class UserManager(BaseUserManager): # inherite all the default model manager of the django 
+    use_in_migrations = True # this is for to use this custom model manager at the  place of the default model manager 
+
+    def create_user(self , email , password = None , **extra_fields):
+        if not email:
+            raise ValueError("Email is required")
+        user = self.model(email = email , **extra_fields)
+        user = self.normalize_email(email)
+        user.set_password(password)
+        user.save(using = self._db)
+        return user
+
+    def create_superuser(self , email , password , **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        return self.create_user(self , email , password , **extra_fields)
+```
+- - The code for the setting.py is :- 
+```
+ALLOWED_HOSTS = []
+AUTH_USER_MODEL = 'others.CustomUser'
+```
+- - Now for createing user and super user write this code :- 
+```python manage.py createuser or createsuperuser```
+in the termial to make a super user and create user in the termial 
+
+- Now we not need any type of abstracte base model (becuase abstracte model is enough)
 
 - ## Model manager 
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1018,4 +1067,31 @@ def send_mass_email(mass_email_content):
 ```
 
 ## Custom ui in the django 
+- For the custom ui in the admin panel in the django we can use the ```'jazzmin'```
+- Installing code for it is :- 
+```
+pip install django-jazzmin
+pip install django-admin-interface
+```
+- Installed app code :- 
+```
+INSTALLED_APPS = [
+    'jazzmin',
+    'django.contrib.admin',
+    # ... other apps
+]
 
+# Jazzmin settings
+JAZZMIN_SETTINGS = {
+    # ... jazzmin settings here
+}
+```
+- Url code is no change need
+```
+from django.urls import path
+from django.contrib import admin
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+]
+```
