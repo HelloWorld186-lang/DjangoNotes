@@ -944,9 +944,30 @@ in the termial to make a super user and create user in the termial
 - Now we not need any type of abstracte base model (becuase abstracte model is enough)
 
 - ## Model manager 
+- - we now ```objects``` is the model manager 
+- - Now we know that if we want to excess the some specific then we use the filter code like
+``` student.objects.all().filter(student_name__icontains = 'a')```
+now we need not write the such big things 
+- - If I only want those student whose is_deleted is fasle (then we no need to write such big filter code like above) 
+- - The code for the models class is :- 
+- - 
+```
+#this is code for the model manager
+class StudentModelManager(models.Manager): # take default model manager
+    def get_query(self):
+        return super().get_queryset().filter(is_deleted = True)
 
+#this is code for the model class
+class Student(models.Model):
+    student_name = models.CharField(max_length=100)
+    is_deleted = models.BooleanField(default=false)
 
-
+    objects = StudentModelManager()
+    admin_objects = models.Manager() # this is the default manager given by the admin  # means admin is able to see all 
+```
+- - After this code when we write the code :- 
+```Student.objects.all()``` now this code will give the only those student which is gone to deletd 
+```Student.admin_objects.all()```now this code will give the all student because admin is useing the default model manager 
 
 ## How to send the email using the django 
 - First code is for the simple  send email :-  
@@ -1094,4 +1115,133 @@ from django.contrib import admin
 urlpatterns = [
     path('admin/', admin.site.urls),
 ]
+```
+
+## Corn job (corntab) in the django (is similar as the celery (is the giant thing) , but the corn job is the small things like threads)
+- Sorry for that the corn job is not gone to sported in the window 
+- The top alternative of the corn job is ```apscheduler```
+- Installing code is :-  ```pip install apscheduler django-apscheduler```
+- Installed setting code 
+```
+INSTALLED_APPS = [
+    ...
+    no need to add anything the installed app
+    ...
+]
+```
+-  
+```
+from apscheduler.schedulers.background import BackgroundScheduler
+import random
+
+def print_random_number():
+    print(f"Random number: {random.randint(1, 100)}")
+
+def start():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(print_random_number, 'interval', seconds=10)
+    scheduler.start()
+    print("Scheduler started...")
+```
+In this code first import the background scheduler and  in the  def start , first run the background scheduler and then add the job to  the  background scheduler and  then  start the background scheduler
+-  For  the running the background scheduler in the ```apps.py```   extra write the code 
+```
+def ready(self):
+        from . import scheduler
+        scheduler.start()
+```
+
+## What is the apps.py  work in the code  :- 
+- The apps.py file in a Django app is used to configure app-specific settings. The code in this file, particularly the AppConfig subclass, is ```automatically loaded when Django starts.```
+
+## Django sending otp using the django 
+- I am using the twillio for the sending the otp verification code 
+- Verification code is :- 
+- Setting.py code :- 
+```
+# For otp verifications 
+# TWILIO_ACCOUNT_SID = ""
+# TWILIO_AUTH_TOKEN = ''
+# TWILIO_PHONE_NUMBER = ''
+```
+- Models code is :- 
+```
+# from django.db import models
+# from django.contrib.auth.models import User
+# import random
+# class PhoneVerification(models.Model):
+#     user = models.OneToOneField(User, on_delete=models.CASCADE)
+#     phone_number = models.CharField(max_length=15)
+#     otp = models.CharField(max_length=6)
+#     is_verified = models.BooleanField(default=False)
+
+#     def generate_otp(self):
+#         self.otp = str(random.randint(100000, 999999))
+#         self.save()
+
+#     def verify_otp(self, otp):
+#         if self.otp == otp:
+#             self.is_verified = True
+#             self.save()
+#             return True
+#         return False
+```
+- View.py code is :- 
+```
+# from django.shortcuts import render, redirect
+# from django.conf import settings
+# from twilio.rest import Client
+# from .models import PhoneVerification
+# from django.contrib.auth.models import User
+
+# def send_otp(request):
+#     if request.method == 'POST':
+#         username = request.POST.get('username')
+#         email = request.POST.get('email')
+#         password = request.POST.get('password')
+#         phone_number = request.POST.get('phone_number')
+
+#         # Ensure the phone number is in international format for India
+#         if not phone_number.startswith('+'):
+#             phone_number = '+91' + phone_number.lstrip('0')
+
+#         # Create user
+#         try:
+#             user = User.objects.create_user(username=username, email=email, password=password)
+#         except Exception as e:
+#             return render(request, 'send_otp.html', {'error': f'Failed to create user: {str(e)}'})
+
+#         # Create or get PhoneVerification instance
+#         phone_verification, created = PhoneVerification.objects.get_or_create(user=user)
+#         phone_verification.phone_number = phone_number
+#         phone_verification.generate_otp()
+
+#         # Twilio client setup
+#         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+
+#         try:
+#             message = client.messages.create(
+#                 body=f"Hello sir , Your OTP is: {phone_verification.otp}",
+#                 from_=settings.TWILIO_PHONE_NUMBER,
+#                 to=phone_number
+#             )
+#             print(f"SMS sent successfully. SID: {message.sid}")
+#             return redirect('verify_otp')
+#         except Exception as e:
+#             # If SMS sending fails, delete the created user
+#             user.delete()
+#             print(f"Error sending SMS: {str(e)}")
+#             return render(request, 'send_otp.html', {'error': f'Failed to send OTP: {str(e)}'})
+
+#     return render(request, 'send_otp.html')
+
+# def verify_otp(request):
+#     if request.method == 'POST':
+#         otp = request.POST.get('otp')
+#         phone_verification = PhoneVerification.objects.get(user=request.user)
+#         if phone_verification.verify_otp(otp):
+#             return render(request, 'verification_success.html')
+#         else:
+#             return render(request, 'verify_otp.html', {'error': 'Invalid OTP'})
+#     return render(request, 'verify_otp.html')
 ```
